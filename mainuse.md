@@ -1,3 +1,29 @@
+## 0.仓库结构(git: laohao78/CyperStereo-M60,私有)
+
+```
+CyperStereo-M60/
+├── mainuse.md            # 本文档:全流程
+├── 遇到的问题.md          # 踩坑记录
+├── camera_yaml/          # 官方逐台出厂标定(SN m023..m050),KannalaBrandt8 鱼眼
+├── kalibr_ws/
+│   ├── calib_data/       # bags/ 结果/ 输入(见 §3;8G bag 不入库)
+│   │   ├── bags/         #   录制与派生 bag(.gitignore)
+│   │   ├── results/      #   kalibr 输出:camchain-*.yaml results-*.txt report-*.pdf
+│   │   ├── target/       #   april_6x6_80x80cm.yaml + A0_01.png
+│   │   └── imu/          #   bmi088_imu_param.yaml
+│   ├── docker/Dockerfile       # kalibr:noetic 镜像(arm64 cv_bridge 处理在里面)
+│   ├── scripts/subsample_bag.py # ROS1 bag 抽帧(§5)
+│   └── src/              # 三个外部依赖 = git 子模块(克隆后需 update --init)
+│       ├── kalibr/       #   ethz-asl/kalibr @ 1f60227
+│       ├── vision_opencv/#   ros-perception/vision_opencv @ cfabf72(noetic,仅用 cv_bridge)
+│       └── patch_cvbridge.py   # arm64 cv_bridge import cv2 顺序补丁(构建时 COPY 进镜像)
+└── CyperstereoSDK/        # 子模块 @ 764ab54;ROS2/ARM 采集源码与 samples
+```
+
+- 换机器:先 `git clone` + `git submodule update --init`
+- 走代理: `git config --global url."https://v6.gh-proxy.org/https://github.com/".insteadOf "https://github.com/"`
+- bag 不进 git(可随时按 §3-§5 重录/转换/抽帧);`.gitignore` 已挡 `*.bag/*.db3/*.pdf`
+
 ## 1.下载 SDK
 ```sh
 # SDK ROS2 启动
