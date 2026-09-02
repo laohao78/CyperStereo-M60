@@ -1,0 +1,120 @@
+Calibration results
+===================
+Normalized Residuals
+----------------------------
+Reprojection error (cam0):     mean 0.07365102148682197, median 0.06844010307863846, std: 0.03976080629053407
+Reprojection error (cam1):     mean 0.07869217126490101, median 0.07248601377606798, std: 0.044206244410478046
+Gyroscope error (imu0):        mean 0.10171113873077209, median 0.0936386055076758, std: 0.053766587420052796
+Accelerometer error (imu0):    mean 0.17265667790550038, median 0.15269421476547224, std: 0.11499930253564668
+
+Residuals
+----------------------------
+Reprojection error (cam0) [px]:     mean 0.07365102148682195, median 0.06844010307863846, std: 0.03976080629053407
+Reprojection error (cam1) [px]:     mean 0.07869217126490101, median 0.07248601377606798, std: 0.044206244410478046
+Gyroscope error (imu0) [rad/s]:     mean 0.0031535314736469916, median 0.002903244357518252, std: 0.0016670212110055864
+Accelerometer error (imu0) [m/s^2]: mean 0.052881194593982786, median 0.04676710210309856, std: 0.03522192462713947
+
+Transformation (cam0):
+-----------------------
+T_ci:  (imu0 to cam0): 
+[[-0.99999825 -0.00091513 -0.00163026  0.04717699]
+ [ 0.00091494 -0.99999957  0.00011891  0.00586602]
+ [-0.00163037  0.00011742  0.99999866 -0.00951534]
+ [ 0.          0.          0.          1.        ]]
+
+T_ic:  (cam0 to imu0): 
+[[-0.99999825  0.00091494 -0.00163037  0.04715602]
+ [-0.00091513 -0.99999957  0.00011742  0.00591031]
+ [-0.00163026  0.00011891  0.99999866  0.00959154]
+ [ 0.          0.          0.          1.        ]]
+
+timeshift cam0 to imu0: [s] (t_imu = t_cam + shift)
+-0.0016382861858939928
+
+
+Transformation (cam1):
+-----------------------
+T_ci:  (imu0 to cam1): 
+[[-0.99998952  0.00268838 -0.00370522 -0.01329152]
+ [-0.00269618 -0.99999416  0.00210181  0.00613576]
+ [-0.00369955  0.00211178  0.99999093 -0.00992325]
+ [ 0.          0.          0.          1.        ]]
+
+T_ic:  (cam1 to imu0): 
+[[-0.99998952 -0.00269618 -0.00369955 -0.01331155]
+ [ 0.00268838 -0.99999416  0.00211178  0.00619242]
+ [-0.00370522  0.00210181  0.99999093  0.00986101]
+ [ 0.          0.          0.          1.        ]]
+
+timeshift cam1 to imu0: [s] (t_imu = t_cam + shift)
+-0.0018802921115288799
+
+Baselines:
+----------
+Baseline (cam0 to cam1): 
+[[ 0.99999135 -0.00360375 -0.00207455 -0.0604667 ]
+ [ 0.00360787  0.99999151  0.00198879  0.00011851]
+ [ 0.00206736 -0.00199626  0.99999587 -0.00049377]
+ [ 0.          0.          0.          1.        ]]
+baseline norm:  0.06046883100552308 [m]
+
+
+Gravity vector in target coords: [m/s^2]
+[-0.17831257 -9.77861948 -0.71779424]
+
+
+Calibration configuration
+=========================
+
+cam0
+-----
+  Camera model: pinhole
+  Focal length: [237.57321688906336, 237.57943989715656]
+  Principal point: [394.05679898009424, 246.21918244309927]
+  Distortion model: equidistant
+  Distortion coefficients: [0.09435312303303886, 0.04367826827313807, -0.029330551492728233, 0.00384541394489854]
+  Type: aprilgrid
+  Tags: 
+    Rows: 6
+    Cols: 6
+    Size: 0.03 [m]
+    Spacing 0.009 [m]
+
+cam1
+-----
+  Camera model: pinhole
+  Focal length: [237.66683470826092, 237.552819570839]
+  Principal point: [398.50178014253356, 248.7271745827424]
+  Distortion model: equidistant
+  Distortion coefficients: [0.09208850044541568, 0.05038135408060942, -0.03566968690060303, 0.00608884018117921]
+  Type: aprilgrid
+  Tags: 
+    Rows: 6
+    Cols: 6
+    Size: 0.03 [m]
+    Spacing 0.009 [m]
+
+
+
+IMU configuration
+=================
+
+IMU0:
+ ----------------------------
+  Model: calibrated
+  Update rate: 200.0
+  Accelerometer:
+    Noise density: 0.02165722852325273 
+    Noise density (discrete): 0.3062794630099745 
+    Random walk: 0.000381538711491782
+  Gyroscope:
+    Noise density: 0.0021923690143745844
+    Noise density (discrete): 0.031004779938550723 
+    Random walk: 1.4221215955051228e-05
+  T_ib (imu0 to imu0)
+    [[1. 0. 0. 0.]
+     [0. 1. 0. 0.]
+     [0. 0. 1. 0.]
+     [0. 0. 0. 1.]]
+  time offset with respect to IMU0: 0.0 [s]
+
