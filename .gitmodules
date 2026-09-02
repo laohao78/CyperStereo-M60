@@ -1,0 +1,9 @@
+[submodule "CyperstereoSDK"]
+	path = CyperstereoSDK
+	url = https://github.com/Cyperstereo/CyperstereoSDK.git
+[submodule "kalibr"]
+	path = kalibr_ws/src/kalibr
+	url = https://github.com/ethz-asl/kalibr.git
+[submodule "vision_opencv"]
+	path = kalibr_ws/src/vision_opencv
+	url = https://github.com/ros-perception/vision_opencv.git

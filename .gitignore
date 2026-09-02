@@ -1,8 +1,3 @@
-# === 外部 clone / 第三方源码(各自有独立 git 仓库,不纳入本仓库) ===
-CyperstereoSDK/
-kalibr_ws/src/kalibr/
-kalibr_ws/src/vision_opencv/
-
 # === bag 数据(巨大;可随时按 mainuse.md §3-§5 重新录制/转换/抽帧) ===
 kalibr_ws/calib_data/bags/
 *.bag
