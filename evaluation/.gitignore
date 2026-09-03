@@ -1,0 +1,4 @@
+# evaluation/.gitignore —— 不入库大/中间产物
+.venv/
+__pycache__/
+*.pyc
