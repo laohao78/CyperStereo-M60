@@ -1,0 +1,14 @@
+# compara/.gitignore —— 只入库评估用文本,挡掉 970MB 原始采集 / 动捕工程文件
+*
+!.gitignore
+!*.md
+!*.json
+!hes3/
+hes3/*
+!hes3/*.csv
+!test3/
+test3/*
+!test3/slam_time_aligned/
+test3/slam_time_aligned/*
+!test3/slam_time_aligned/CameraTrajectory_*_time_aligned.txt
+!test3/slam_time_aligned/alignment_metadata.json

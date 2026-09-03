@@ -1,0 +1,50 @@
+{
+  "dataset": "/media/yin/2E0AE2B20AE275ED/0731/test3",
+  "time_unit": "seconds",
+  "time_origin": "record_start_target_unix",
+  "nodes": {
+    "150": {
+      "source": "/media/yin/2E0AE2B20AE275ED/0731/test3/150/stereo/slam_result/CameraTrajectory.txt",
+      "output": "/media/yin/2E0AE2B20AE275ED/0731/test3/slam_time_aligned/CameraTrajectory_150_time_aligned.txt",
+      "pose_count": 821,
+      "alignment_method": "interp_system_time_s",
+      "first_camera_timestamp": 1678.7097,
+      "first_system_time_s": 1785484618.5058377,
+      "record_start_target_unix": 1785484617.2503152,
+      "record_start_actual_unix": 1785484617.250414,
+      "applied_shift_seconds": -1677.4541776180267,
+      "aligned_start_seconds": 1.689434289932251,
+      "aligned_end_seconds": 34.47965979576111
+    },
+    "151": {
+      "source": "/media/yin/2E0AE2B20AE275ED/0731/test3/151/stereo/slam_result/CameraTrajectory.txt",
+      "output": "/media/yin/2E0AE2B20AE275ED/0731/test3/slam_time_aligned/CameraTrajectory_151_time_aligned.txt",
+      "pose_count": 827,
+      "alignment_method": "interp_system_time_s",
+      "first_camera_timestamp": 1602.9733,
+      "first_system_time_s": 1785484617.5097826,
+      "record_start_target_unix": 1785484617.2503152,
+      "record_start_actual_unix": 1785484617.2503932,
+      "applied_shift_seconds": -1602.713832616806,
+      "aligned_start_seconds": 0.8487379550933838,
+      "aligned_end_seconds": 33.878633975982666
+    },
+    "152": {
+      "source": "/media/yin/2E0AE2B20AE275ED/0731/test3/152/stereo/slam_result/CameraTrajectory.txt",
+      "output": "/media/yin/2E0AE2B20AE275ED/0731/test3/slam_time_aligned/CameraTrajectory_152_time_aligned.txt",
+      "pose_count": 821,
+      "alignment_method": "interp_system_time_s",
+      "first_camera_timestamp": 1629.565,
+      "first_system_time_s": 1785484617.5360017,
+      "record_start_target_unix": 1785484617.2503152,
+      "record_start_actual_unix": 1785484617.250393,
+      "applied_shift_seconds": -1629.2793135643005,
+      "aligned_start_seconds": 0.6805870532989502,
+      "aligned_end_seconds": 33.47007656097412
+    }
+  },
+  "common_interval_seconds": [
+    1.689434289932251,
+    33.47007656097412
+  ]
+}
