@@ -1,4 +1,4 @@
-## 0.仓库结构(git: laohao78/CyperStereo-M60,私有)
+## 0.仓库结构(git: laohao78/CyperStereo-M60,public)
 
 ```
 CyperStereo-M60/
