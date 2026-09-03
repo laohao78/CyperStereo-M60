@@ -7,3 +7,6 @@
 [submodule "vision_opencv"]
 	path = kalibr_ws/src/vision_opencv
 	url = https://github.com/ros-perception/vision_opencv.git
+[submodule "ORB_SLAM3-Cyperstereo"]
+	path = ORB_SLAM3-Cyperstereo
+	url = https://github.com/Cyperstereo/ORB_SLAM3-Cyperstereo.git

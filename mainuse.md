@@ -17,7 +17,8 @@ CyperStereo-M60/
 │       ├── kalibr/       #   ethz-asl/kalibr @ 1f60227
 │       ├── vision_opencv/#   ros-perception/vision_opencv @ cfabf72(noetic,仅用 cv_bridge)
 │       └── patch_cvbridge.py   # arm64 cv_bridge import cv2 顺序补丁(构建时 COPY 进镜像)
-└── CyperstereoSDK/        # 子模块 @ 764ab54;ROS2/ARM 采集源码与 samples
+├── CyperstereoSDK/        # 子模块 @ 764ab54;ROS2/ARM 采集源码与 samples
+└── ORB_SLAM3-Cyperstereo/ # 上游 fork(暂 untracked,待登记第 4 子模块);编译与在线跑见 §10
 ```
 
 - 换机器:先 `git clone` + `git submodule update --init`
@@ -135,3 +136,32 @@ python3 \
 产物 `camera_yaml/cyperstereo_sn_m023_kalibr.yaml`:与官方 `cyperstereo_sn_m023.yaml` 同格式同字段,
 内参/基线/Tbc 均吻合到亚像素/亚毫米级,可直接喂 `cyperstereo_online`(见 §8 表对比)。
 官方 m023 = 工厂 kalibr 结果 + 同一生成器,格式一致可交叉验证。
+
+## 10.编译并在线跑 ORB_SLAM3-Cyperstereo(原生 ARM,无 ROS)
+> fork 自带 `Thirdparty/usb/uvc` 静态 Cyperlib;`cyperstereo_online`(实时)与 `cyperstereo_offline`(读图)
+> 都是原生可执行文件,不依赖 ROS。需要 Pangolin、OpenCV≥4.2、Eigen3。
+```sh
+# 0) 依赖:新版 Pangolin 强依赖 epoxy;fork 没带 Vocabulary(原 404)→ 从上游
+#    UZ-SLAMLab/ORB_SLAM3 下 ORBvoc.txt.tar.gz 解到 Vocabulary/
+sudo apt-get install -y libepoxy-dev
+
+# 1) 编译(g2o/DBoW2 老项目在 CMake4 下要 CMAKE_POLICY_VERSION_MINIMUM=3.5,见 遇到的问题 #1)
+cd ~/data/CyperStereo-M60/ORB_SLAM3-Cyperstereo
+./build.sh
+# 产物: build/cyperstereo_online、build/cyperstereo_offline
+
+# 2) 在线跑(拿 §9 自标定的 yaml;需在 fork 目录内执行,Vocabulary 与 ./build 都是相对路径)
+./build/cyperstereo_online \
+  Vocabulary/ORBvoc.txt \
+  /home/imcrl/data/CyperStereo-M60/camera_yaml/cyperstereo_sn_m023_kalibr.yaml
+```
+- **无头 X 的坑**:SSH/无桌面时 Pangolin 报 `X11: Failed to open X display` 直接 abort(核心转储)。
+  本机实际 X server 只在 **:1**(`/tmp/.X11-unix/` 只有 X1),而常见 .bashrc 自动设 DISPLAY 会落到 :0
+  → `export DISPLAY=:1`,用 `xdpyinfo` 确认能连再跑。真没 X server 时用虚拟屏:
+  `xvfb-run -a -s "-screen 0 1280x800x24" ./build/cyperstereo_online ...`
+- **输出解读**:`capture_img_timestamp` = 抓帧节拍,实测 **≈12.5fps**(yaml `Camera.fps: 15`,USB 实际略低,
+  `frame_rate` 周期性打印);`timestamp <x> <y> <z> q <qx qy qz qw>` = 每帧 `TrackStereo` 返回的相机位姿
+  **Tcw**,说明 SLAM 在追踪。相机静止放桌上时位置稳在原点附近、四元数基本不变 = 初始化完成且持续追踪。
+- 启动早期打的 `Not a USB video device` 是无害的 UVC 探测提示(实际已正常出流)。
+- 状态(2026-09-03):`cyperstereo_online` 已实时出流并输出位姿。要验追踪鲁棒性,手持相机在纹理环境
+  平移/旋转,看位姿是否跟手、有无 relocalize/丢失。
