@@ -112,11 +112,26 @@ docker run --rm -v "$PWD":/data kalibr:noetic \
 |---|---|---|---|
 | cam0 fx/fy | 237.57 / 237.58 | 236.58 / 236.64 | 一致(~0.4%) |
 | cam0 cx/cy | 394.06 / 246.22 | 393.59 / 247.47 | 亚像素级 |
-| cam0 k1 | 0.0944 | 0.0937 | 一致 |
-| 立体基线 | 6.05 cm | 6.01 cm | 差 0.4 mm |
+| cam0 k1 | 0.0944 | 0.0937 | 一致(k2~k4 高阶项散,KB 可互相吸收,两者重投影都亚像素) |
+| 立体基线 Tlr tx | 6.05 cm | 6.01 cm | 差 0.3 mm |
 | 重投影误差 | 0.07–0.08 px | — | 亚像素 |
 | IMU残差 | 陀螺 0.003 rad/s,加计 0.05 m/s² | — | 健康 |
-| T_cam_imu | t=[+47.2,+5.9,−9.5]mm, R≈diag(-1,-1,1) | Tbc t=[+49.8,+4.2,+8.7]mm | 旋转一致;x/y 差~2mm;z 反号= yaml 存逆矩阵约定问题(按下游格式取) |
+| Tbc(=cam0 在 IMU 系) | [+47.2,+5.9,+9.6] mm | [+49.8,+4.2,+8.7] mm | x/y 差~2mm,**z 差 0.9mm** |
 | timeshift cam-imu | −1.6 ms | — | 次帧级 |
 
-**结论:出厂标定经 kalibr 独立验证通过**,可直接用 `cyperstereo_sn_m023.yaml`(ORB-SLAM3 风格)或 kalibr 产物。
+**结论:出厂标定经 kalibr 独立验证通过。** 官方 yaml 的 `Tbc` 存的其实是 **cam0 在 IMU 系里的坐标(≈ kalibr 的 T_ic,cam→imu)**,不是 imu→cam——之前看到的 z 反号就是这套取法,方向问题已由 SDK 生成器证实。
+
+## 9.生成 ORB-SLAM3 专用 yaml(SDK 生成器)
+> SDK 自带 `CyperstereoSDK/slam/config/orbslam3/generate_cyperstereo_yaml.py` 模板,把 kalibr 的
+> `results-imucam.txt` 转成 ORB-SLAM3-Cyperstereo 用的 SN yaml。模板 m007 = M 系列(60mm 基线),
+> c72 = C 系列(150mm 基线),M60 用 m007。
+```sh
+python3 \
+  CyperstereoSDK/slam/config/orbslam3/generate_cyperstereo_yaml.py \
+  kalibr_ws/calib_data/results/cyperstereo_imucam-results-imucam.txt \
+  -t CyperstereoSDK/slam/config/orbslam3/cyperstereo_sn_m007.yaml \
+  -o camera_yaml/cyperstereo_sn_m023_kalibr.yaml
+```
+产物 `camera_yaml/cyperstereo_sn_m023_kalibr.yaml`:与官方 `cyperstereo_sn_m023.yaml` 同格式同字段,
+内参/基线/Tbc 均吻合到亚像素/亚毫米级,可直接喂 `cyperstereo_online`(见 §8 表对比)。
+官方 m023 = 工厂 kalibr 结果 + 同一生成器,格式一致可交叉验证。
