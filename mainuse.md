@@ -18,7 +18,7 @@ CyperStereo-M60/
 │       ├── vision_opencv/#   ros-perception/vision_opencv @ cfabf72(noetic,仅用 cv_bridge)
 │       └── patch_cvbridge.py   # arm64 cv_bridge import cv2 顺序补丁(构建时 COPY 进镜像)
 ├── CyperstereoSDK/        # 子模块 @ 764ab54;ROS2/ARM 采集源码与 samples
-└── ORB_SLAM3-Cyperstereo/ # 上游 fork(暂 untracked,待登记第 4 子模块);编译与在线跑见 §10
+└── ORB_SLAM3-Cyperstereo/ # 第 4 子模块 @ 0a26b7b;编译与在线跑见 §10
 ```
 
 - 换机器:先 `git clone` + `git submodule update --init`
