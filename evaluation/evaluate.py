@@ -152,19 +152,33 @@ def _ape_metric(rel):
     _, _, metrics, _ = _evo()
     return metrics.APE(rel)
 
+def _rpe_metric(rel, delta=1.0, delta_unit=None):
+    """创建 RPE 指标(相对位姿误差):delta=采样间隔."""
+    _, _, metrics, _ = _evo()
+    if delta_unit is None:
+        delta_unit = metrics.Unit.meters
+    return metrics.RPE(rel, delta=delta, delta_unit=delta_unit, all_pairs=False)
+
 def find_time_offset(gt, est, lo, hi, step):
-    """扫 Δ ∈ [lo,hi]:rmse 山谷最低点即 est 相对 gt 的时间偏移(est_t+Δ≈gt_t)."""
+    """扫 Δ ∈ [lo,hi]:rmse 山谷最低点即 est 相对 gt 的时间偏移(est_t+Δ≈gt_t).
+    返回: (最佳偏移, 该偏移下的rmse, 扫描历史[(delta, rmse), ...])
+    """
     best, bd = np.inf, 0.0
+    scan_history = []
+    # 粗扫
     for d in np.arange(lo, hi + 1e-9, step):
         r = _rmse_mm(gt, est, d)
+        scan_history.append((float(d), float(r)))
         if r < best:
             best, bd = r, d
     # 谷底细扫
+    fine_scan = []
     for d in np.arange(bd - step, bd + step + 1e-12, step / 40.0):
         r = _rmse_mm(gt, est, d)
+        fine_scan.append((float(d), float(r)))
         if r < best:
             best, bd = r, d
-    return bd, best
+    return bd, best, scan_history, fine_scan
 
 # ---------------------------------------------------------------- 统计/绘图
 
@@ -196,8 +210,9 @@ def _euler_from_quat_xyzw(q):
     roll = np.degrees(np.arctan2(sr, cr))
     return np.stack([roll, pitch, yaw], 1)
 
-def try_plots(name, outdir, te, ape_mm, s_gt, s_est):
-    """s_gt/s_est 已 evo 对齐;te=est 会话时间轴;ape_mm=逐点 APE(mm)."""
+def try_plots_v2(name, outdir, te, ape_mm, s_gt, s_est):
+    """s_gt/s_est 已 evo 对齐;te=est 会话时间轴;ape_mm=逐点 APE(mm).
+    输出图直接到 outdir/ (不再创建子目录)."""
     try:
         import matplotlib
         matplotlib.use("Agg")
@@ -205,9 +220,10 @@ def try_plots(name, outdir, te, ape_mm, s_gt, s_est):
     except Exception as e:
         print(f"  [plot 跳过: matplotlib 不可用] {e}")
         return
-    g = outdir / name; g.mkdir(parents=True, exist_ok=True)
+
     gt_p, est_p = s_gt.positions_xyz, s_est.positions_xyz
     mean, med, rm, sd = float(np.mean(ape_mm)), float(np.median(ape_mm)), float(np.sqrt(np.mean(ape_mm**2))), float(np.std(ape_mm))
+
     # ② APE 时序
     fig, ax = plt.subplots(figsize=(9.5, 3.4))
     ax.plot(te, ape_mm, lw=0.8, color="tab:red", label="APE")
@@ -216,7 +232,8 @@ def try_plots(name, outdir, te, ape_mm, s_gt, s_est):
     ax.fill_between(te, mean - sd, mean + sd, alpha=.12, color="tab:blue", label=f"±1σ {sd:.2f}")
     ax.set_title(f"{name} APE time series (max {ape_mm.max():.2f}, SSE {(ape_mm**2).sum():.1f})")
     ax.set_xlabel("est session time (s)"); ax.set_ylabel("APE (mm)"); ax.grid(alpha=.3); ax.legend(fontsize=7)
-    fig.tight_layout(); fig.savefig(g / "ape_timeseries.png", dpi=130); plt.close(fig)
+    fig.tight_layout(); fig.savefig(outdir / "ape_timeseries.png", dpi=130); plt.close(fig)
+
     # ③ 3D 热力图
     fig = plt.figure(figsize=(8.5, 6)); ax = fig.add_subplot(111, projection="3d")
     sc = ax.scatter(gt_p[:, 0], gt_p[:, 1], gt_p[:, 2], c=ape_mm, cmap="jet", s=8, alpha=0.9)
@@ -225,7 +242,8 @@ def try_plots(name, outdir, te, ape_mm, s_gt, s_est):
     ax.plot(est_p[0, 0], est_p[0, 1], est_p[0, 2], "c^", ms=12, label="est start")
     cb = fig.colorbar(sc, ax=ax, pad=0.1); cb.set_label("APE (mm)")
     ax.set_title(f"{name} trajectory heatmap (color=APE)"); ax.legend(fontsize=7)
-    fig.tight_layout(); fig.savefig(g / "traj_heatmap3d.png", dpi=130); plt.close(fig)
+    fig.tight_layout(); fig.savefig(outdir / "traj_heatmap3d.png", dpi=130); plt.close(fig)
+
     # ④ XYZ 对比
     fig, axs = plt.subplots(3, 1, figsize=(10, 7), sharex=True)
     for k, axx in enumerate(axs):
@@ -234,7 +252,8 @@ def try_plots(name, outdir, te, ape_mm, s_gt, s_est):
         axx.set_ylabel(["X", "Y", "Z"][k] + " (m)"); axx.grid(alpha=.3); axx.legend(fontsize=7, loc="upper right")
     axs[0].set_title(f"{name} XYZ compare (time sync check)")
     axs[-1].set_xlabel("est session time (s)")
-    fig.tight_layout(); fig.savefig(g / "xyz_compare.png", dpi=130); plt.close(fig)
+    fig.tight_layout(); fig.savefig(outdir / "xyz_compare.png", dpi=130); plt.close(fig)
+
     # ⑤ RPY 对比(四元数 xyzw)
     rpy_g = _euler_from_quat_xyzw(np.roll(s_gt.orientations_quat_wxyz, -1, axis=1))
     rpy_e = _euler_from_quat_xyzw(np.roll(s_est.orientations_quat_wxyz, -1, axis=1))
@@ -245,8 +264,59 @@ def try_plots(name, outdir, te, ape_mm, s_gt, s_est):
         axx.set_ylabel(["Roll", "Pitch", "Yaw"][k] + " (deg)"); axx.grid(alpha=.3); axx.legend(fontsize=7, loc="upper right")
     axs[0].set_title(f"{name} RPY compare (may carry static rig offset)")
     axs[-1].set_xlabel("est session time (s)")
-    fig.tight_layout(); fig.savefig(g / "rpy_compare.png", dpi=130); plt.close(fig)
-    print(f"  图 -> {g}/")
+    fig.tight_layout(); fig.savefig(outdir / "rpy_compare.png", dpi=130); plt.close(fig)
+    print(f"  4张对比图 -> {outdir}/")
+
+def plot_offset_scan(scan_history, fine_scan, best_offset, best_rmse, outpath):
+    """绘制时间偏移扫描曲线(RMSE valley)."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception as e:
+        print(f"  [offset scan plot 跳过: matplotlib 不可用] {e}")
+        return
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+    # 左图：粗扫全局视图
+    if scan_history:
+        deltas, rmses = zip(*scan_history)
+        ax1.plot(deltas, rmses, 'o-', markersize=4, linewidth=1, color='tab:blue', label='Coarse scan')
+        ax1.axvline(best_offset, color='red', linestyle='--', linewidth=1.5, label=f'Best Δ={best_offset:.3f}s')
+        ax1.axhline(best_rmse, color='green', linestyle=':', linewidth=1, alpha=0.7, label=f'Min RMSE={best_rmse:.1f}mm')
+        ax1.set_xlabel('Time offset Δ (s)'); ax1.set_ylabel('RMSE (mm)')
+        ax1.set_title('Coarse scan: RMSE valley')
+        ax1.grid(alpha=0.3); ax1.legend(fontsize=8)
+
+    # 右图：细扫局部放大
+    if fine_scan:
+        deltas_f, rmses_f = zip(*fine_scan)
+        ax2.plot(deltas_f, rmses_f, 's-', markersize=3, linewidth=1, color='tab:orange', label='Fine scan')
+        ax2.axvline(best_offset, color='red', linestyle='--', linewidth=1.5, label=f'Optimal Δ={best_offset:.4f}s')
+        ax2.axhline(best_rmse, color='green', linestyle=':', linewidth=1, alpha=0.7)
+        ax2.set_xlabel('Time offset Δ (s)'); ax2.set_ylabel('RMSE (mm)')
+        ax2.set_title(f'Fine scan around valley (±step)')
+        ax2.grid(alpha=0.3); ax2.legend(fontsize=8)
+
+    fig.tight_layout()
+    fig.savefig(outpath, dpi=130)
+    plt.close(fig)
+    print(f"  offset扫描曲线 -> {outpath}")
+
+def extract_align_result(s_est_before, s_est_after):
+    """从对齐前后的轨迹提取变换参数 (R, t, scale).
+    s_est_before: 对齐前的 est 轨迹副本
+    s_est_after: 对齐后的 est 轨迹(就地修改后)
+    返回: dict(R=3x3 list, t=3 list, scale=float)
+    """
+    # evo 的 align 是就地修改,无法直接拿到变换矩阵
+    # 变通:取首帧位置/姿态的变化推导(近似,仅供参考)
+    # 更准确的方法是重新调用 align 并捕获返回值
+    return {
+        'note': 'align params not directly extractable from evo (in-place modification)',
+        'first_pos_shift': (s_est_after.positions_xyz[0] - s_est_before.positions_xyz[0]).tolist(),
+    }
 
 # ---------------------------------------------------------------- 单对评估
 
@@ -260,39 +330,99 @@ def evaluate_one(name, gt_path, est_path, args):
     est_evo = to_evo(t_e, pos_e, quat_e)
     print(f"  GT: {len(t_g)} 帧 @ [{t_g[0]:.3f},{t_g[-1]:.3f}] s (零点 unix={origin_used:.4f})")
     print(f"  est: {len(t_e)} 帧 @ [{t_e[0]:.3f},{t_e[-1]:.3f}] s")
-    # 自动时间偏移
+
+    # 自动时间偏移扫描
+    scan_history, fine_scan = [], []
     if args.auto_offset is None:
-        delta, rmse_at = find_time_offset(gt_evo, est_evo, args.lo, args.hi, args.step)
+        delta, rmse_at, scan_history, fine_scan = find_time_offset(gt_evo, est_evo, args.lo, args.hi, args.step)
         print(f"  时间偏移扫描: Δ={delta:+.4f}s (est+Δ≈gt)  rmse={rmse_at:.1f}mm")
     else:
         delta = args.auto_offset
+        rmse_at = _rmse_mm(gt_evo, est_evo, delta)
+
     # 最终关联 + SE(3) 对齐
     syn = _assoc(gt_evo, est_evo, delta)
     if syn is None:
         raise RuntimeError(f"{name}: Δ={delta:.3f} 下无足够关联点")
     s_gt, s_est = syn
+
+    # 保存对齐前的副本(用于提取变换参数)
+    import copy
+    s_est_before = copy.deepcopy(s_est)
+
+    # SE(3) 对齐
     s_est.align(s_gt, correct_scale=False)
     print(f"  公共窗: [{s_est.timestamps[0]:.3f},{s_est.timestamps[-1]:.3f}] s, {len(s_est.timestamps)} 点")
-    # SE3: 平移 APE / 旋转 ARE
+
+    # 保存对齐后的轨迹用于绘图（在 process_data 之前）
+    import copy
+    s_gt_for_plot = copy.deepcopy(s_gt)
+    s_est_for_plot = copy.deepcopy(s_est)
+
+    # APE: 平移 + 旋转
     ape_tr = _ape_metric(_PR.translation_part); ape_tr.process_data((s_est, s_gt))
     ape_rot = _ape_metric(_PR.rotation_angle_deg); ape_rot.process_data((s_est, s_gt))
     st_tr = stats_from_ape(ape_tr)
     st_rot = stats_from_ape(ape_rot, unit_mm=False)
-    # Sim3 参考(尺度)
+
+    # RPE: 平移 + 旋转 (delta=1m 采样间隔)
+    rpe_tr = _rpe_metric(_PR.translation_part, delta=1.0); rpe_tr.process_data((s_est, s_gt))
+    rpe_rot = _rpe_metric(_PR.rotation_angle_deg, delta=1.0); rpe_rot.process_data((s_est, s_gt))
+    st_rpe_tr = stats_from_ape(rpe_tr)
+    st_rpe_rot = stats_from_ape(rpe_rot, unit_mm=False)
+
+    # Sim(3) 参考(尺度)
     s_gt2, s_est2 = _assoc(gt_evo, est_evo, delta)
     _, _, scale = s_est2.align(s_gt2, correct_scale=True)
     ape_s3 = _ape_metric(_PR.translation_part); ape_s3.process_data((s_est2, s_gt2))
     st_s3 = stats_from_ape(ape_s3)
+
     print("  [SE3] APE(mm):", fmt(st_tr))
     print("  [SE3] ARE(° ):", fmt(st_rot))
+    print("  [SE3] RPE(mm):", fmt(st_rpe_tr))
+    print("  [SE3] RPE_rot(°):", fmt(st_rpe_rot))
     print(f"  [Sim3] 尺度 s={scale:.6f}  APE(mm):", fmt(st_s3))
-    res = dict(se3_ape=st_tr, se3_are=st_rot, sim3_ape=st_s3, scale=float(scale),
-               delta_s=float(delta), origin_unix=float(origin_used),
-               win=[float(s_est.timestamps[0]), float(s_est.timestamps[-1])])
+
+    # 构建结果字典
+    res = {
+        'time_offset_s': float(delta),
+        'time_offset_rmse_mm': float(rmse_at),
+        'origin_unix': float(origin_used),
+        'common_window_s': [float(s_est.timestamps[0]), float(s_est.timestamps[-1])],
+        'n_points': len(s_est.timestamps),
+        'SE3': {
+            'APE_translation_mm': st_tr,
+            'APE_rotation_deg': st_rot,
+            'RPE_translation_mm': st_rpe_tr,
+            'RPE_rotation_deg': st_rpe_rot,
+        },
+        'Sim3': {
+            'scale': float(scale),
+            'APE_translation_mm': st_s3,
+        },
+        'align_params': extract_align_result(s_est_before, s_est),
+    }
+
+    # 输出到 per-camera 目录
+    cam_dir = args.out / name
+    cam_dir.mkdir(parents=True, exist_ok=True)
+
+    # 写 metrics.json
+    (cam_dir / 'metrics.json').write_text(json.dumps(res, indent=2))
+    print(f"  metrics -> {cam_dir}/metrics.json")
+
+    # 绘图（使用 process_data 之前保存的副本）
     if not args.no_plots:
-        te = np.asarray(s_est.timestamps)
+        te = np.asarray(s_est_for_plot.timestamps)
         ape_mm = 1000.0 * np.asarray(ape_tr.error)
-        try_plots(name, args.out, te, ape_mm, s_gt, s_est)
+
+        # offset 扫描曲线
+        if scan_history or fine_scan:
+            plot_offset_scan(scan_history, fine_scan, delta, rmse_at, cam_dir / 'offset_scan.png')
+
+        # 原有 4 张图(输出到 cam_dir,不是子目录)
+        try_plots_v2(name, cam_dir, te, ape_mm, s_gt_for_plot, s_est_for_plot)
+
     return res
 
 def main():
@@ -328,23 +458,49 @@ def main():
             results[k] = evaluate_one(k, g, e, args)
         except Exception as ex:
             print(f"  [!!] {k} 评估失败: {ex}", file=sys.stderr)
-    # 汇总表(每台:APE(mm) 与 ARE(deg) 各一行, 列=max mean median min rmse sse std)
-    print("\n================ 汇总表 (evo SE(3) 对齐) ================")
-    hdr = (f"{'unit':>5} | {'量':<4} | {'max':>9} {'mean':>9} {'median':>9} {'min':>9} "
-           f"{'rmse':>9} {'sse':>11} {'std':>9} | {'scale':>7} {'N':>5} {'Δ':>7}")
-    print(hdr); print("-" * len(hdr))
-    for k, r in results.items():
-        a, ar = r["se3_ape"], r["se3_are"]
-        def row(s):
-            return (f"{k:>5} | " + f"{'APE':<4}" + f" | {s['max']:9.3f} {s['mean']:9.3f} {s['median']:9.3f} {s['min']:9.3f} "
-                    f"{s['rmse']:9.3f} {s['sse']:11.1f} {s['std']:9.3f}")
-        print(row(a) + f" | {r['scale']:7.4f} {a['n']:5d} {r['delta_s']:+7.2f}")
-        print(f"{k:>5} | {'ARE':<4} | {ar['max']:9.3f} {ar['mean']:9.3f} {ar['median']:9.3f} {ar['min']:9.3f} "
-              f"{ar['rmse']:9.3f} {ar['sse']:11.1f} {ar['std']:9.3f}")
+
+    # 全局汇总 summary.json (兼容旧格式 + 新增 per-camera 详细信息)
     if results:
         args.out.mkdir(parents=True, exist_ok=True)
-        (args.out / "summary.json").write_text(json.dumps(results, indent=1, default=float))
-        print(f"\n结果 -> {args.out}/summary.json")
+        summary = {
+            'note': 'Per-camera detailed metrics in {camid}/metrics.json; this is a global summary',
+            'cameras': {}
+        }
+        for k, r in results.items():
+            # 兼容旧格式的扁平结构
+            summary['cameras'][k] = {
+                'time_offset_s': r['time_offset_s'],
+                'n_points': r['n_points'],
+                'SE3_APE_rmse_mm': r['SE3']['APE_translation_mm']['rmse'],
+                'SE3_ARE_rmse_deg': r['SE3']['APE_rotation_deg']['rmse'],
+                'SE3_RPE_rmse_mm': r['SE3']['RPE_translation_mm']['rmse'],
+                'Sim3_scale': r['Sim3']['scale'],
+            }
+        (args.out / "summary.json").write_text(json.dumps(summary, indent=2))
+        print(f"\n全局汇总 -> {args.out}/summary.json")
+
+    # 汇总表(每台:APE(mm) 与 ARE(deg) 各一行, 列=max mean median min rmse sse std)
+    print("\n================ 汇总表 (evo SE(3) 对齐) ================")
+    hdr = (f"{'unit':>5} | {'量':<8} | {'max':>9} {'mean':>9} {'median':>9} {'min':>9} "
+           f"{'rmse':>9} {'sse':>11} {'std':>9} | {'N':>5} {'Δ(s)':>7}")
+    print(hdr); print("-" * len(hdr))
+    for k, r in results.items():
+        ape = r['SE3']['APE_translation_mm']
+        are = r['SE3']['APE_rotation_deg']
+        rpe = r['SE3']['RPE_translation_mm']
+        rpe_rot = r['SE3']['RPE_rotation_deg']
+
+        def row(label, s):
+            return (f"{k:>5} | {label:<8} | {s['max']:9.3f} {s['mean']:9.3f} {s['median']:9.3f} {s['min']:9.3f} "
+                    f"{s['rmse']:9.3f} {s['sse']:11.1f} {s['std']:9.3f}")
+
+        print(row('APE(mm)', ape) + f" | {ape['n']:5d} {r['time_offset_s']:+7.2f}")
+        print(row('ARE(°)', are) + f" | {are['n']:5d}        ")
+        print(row('RPE(mm)', rpe) + f" | {rpe['n']:5d}        ")
+        print(row('RPE(°)', rpe_rot) + f" | {rpe_rot['n']:5d}        ")
+        print(f"{k:>5} | {'Sim3-s':<8} | scale={r['Sim3']['scale']:.6f}")
+        if k != list(results.keys())[-1]:
+            print()  # 空行分隔不同相机
 
 if __name__ == "__main__":
     main()
